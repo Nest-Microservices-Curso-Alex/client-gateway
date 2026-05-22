@@ -27,8 +27,14 @@ export class OrdersController {
   }
 
   @Get()
-  findAll(@Query() orderPaginationDto: OrderPaginationDto) {
-    return this.orderClient.send('findAllOrders', orderPaginationDto);
+  async findAll(@Query() orderPaginationDto: OrderPaginationDto) {
+    try {
+      return await firstValueFrom<Record<string, unknown>>(
+        this.orderClient.send('findAllOrders', orderPaginationDto),
+      );
+    } catch (error) {
+      throw new RpcException(error as string | object);
+    }
   }
 
   @Get('id/:id')
