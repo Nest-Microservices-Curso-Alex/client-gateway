@@ -6,15 +6,19 @@ import {
   Param,
   Inject,
   ParseUUIDPipe,
+  Query,
+  Patch,
 } from '@nestjs/common';
-import { ORDER_SERVICE } from 'src/config';
-import { ClientProxy } from '@nestjs/microservices';
-import { CreateOrderDto } from './dto';
+import { NATS_SERVICE } from 'src/config';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
+import { CreateOrderDto, OrderPaginationDto, StatusDto } from './dto';
+import { firstValueFrom } from 'rxjs';
+import { PaginationDto } from 'src/common';
 
 @Controller('orders')
 export class OrdersController {
   constructor(
-    @Inject(ORDER_SERVICE) private readonly orderClient: ClientProxy,
+    @Inject(NATS_SERVICE) private readonly orderClient: ClientProxy,
   ) {}
 
   @Post()
@@ -23,17 +27,50 @@ export class OrdersController {
   }
 
   @Get()
-  findAll() {
-    return this.orderClient.send('findAllOrders', {});
+  findAll(@Query() orderPaginationDto: OrderPaginationDto) {
+    return this.orderClient.send('findAllOrders', orderPaginationDto);
   }
 
-  @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.orderClient.send('findOneOrder', id);
+  @Get('id/:id')
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    try {
+      const order = await firstValueFrom<Record<string, unknown>>(
+        this.orderClient.send('findOneOrder', { id }),
+      );
+
+      return order;
+    } catch (error) {
+      throw new RpcException(error as string | object);
+    }
   }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateOrderDto: UpdateOrderDto) {
-  //   return this.orderClient.update(+id, updateOrderDto);
-  // }
+  @Get(':status')
+  findAllByStatus(
+    @Param() statusDto: StatusDto,
+    @Query() paginationDto: PaginationDto,
+  ) {
+    try {
+      return this.orderClient.send('findAllOrders', {
+        ...paginationDto,
+        status: statusDto.status,
+      });
+    } catch (error) {
+      throw new RpcException(error as string | object);
+    }
+  }
+
+  @Patch(':id')
+  changeStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() statusDto: StatusDto,
+  ) {
+    try {
+      return this.orderClient.send('changeOrderStatus', {
+        id,
+        status: statusDto.status,
+      });
+    } catch (error) {
+      throw new RpcException(error as string | object);
+    }
+  }
 }

@@ -1,2 +1,2 @@
-export { PRODUCT_SERVICE, ORDER_SERVICE } from './services';
-export { envs } from './envs';
+export * from './services';
+export * from './envs';
