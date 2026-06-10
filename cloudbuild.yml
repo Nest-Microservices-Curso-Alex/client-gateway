@@ -16,3 +16,4 @@ steps:
         'push',
         'northamerica-south1-docker.pkg.dev/tienda-microservice-498922/image-registry/client-gateway',
       ]
+      # Cambio para volver a hacer pruebas
